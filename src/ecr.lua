@@ -1,4 +1,3 @@
-local bit32 = require("bit")
 local INITIAL_ENTITY_VERSION = 1
 local MAX_ENTITIES = 1048575
 
@@ -45,7 +44,7 @@ local function debug_arg(i)
 end
 
 ASSERT(
-	bit32.band(MAX_ENTITIES + 1, MAX_ENTITIES) == 0 and MAX_ENTITIES <= 1048575 and MAX_ENTITIES > 0,
+	MAX_ENTITIES + 1 & MAX_ENTITIES == 0 and MAX_ENTITIES <= 1048575 and MAX_ENTITIES > 0,
 	"invalid max entities limit"
 )
 
@@ -65,7 +64,7 @@ local function ID_CREATE(key, ver)
 end
 
 local function ID_KEY(ID)
-	return bit32.band(ID, ID_MASK_KEY)
+	return ID & ID_MASK_KEY
 end
 
 local function ID_KEY_VER(ID)
@@ -338,15 +337,13 @@ do
 					for i = n, 1, -1 do
 						local entity = entities[i]
 						local idx_ver = a.map[ID_KEY(entity)]
-						if idx_ver == nil then
-							::continue::
+						if idx_ver then
+							local va = a.values[ID_KEY(idx_ver)]
+							if va then
+								n = i - 1
+								return entity, va, values[i]
+							end
 						end
-						local va = a.values[ID_KEY(idx_ver)]
-						if va == nil then
-							::continue::
-						end
-						n = i - 1
-						return entity, va, values[i]
 					end
 					return nil, nil, nil
 				end
@@ -383,7 +380,7 @@ do
 					end
 
 					n = i - 1
-					return entity, unpack(tuple)
+					return entity, table.unpack(tuple)
 				end
 				return nil
 			end
@@ -538,7 +535,7 @@ do
 					end
 
 					n = i - 1
-					return id, unpack(tuple)
+					return id, table.unpack(tuple)
 				end
 				return nil, nil
 			end
@@ -604,28 +601,28 @@ do
 		end
 
 		if #pools == 1 then
-			local a = unpack(values)
+			local a = table.unpack(values)
 			return function()
 				local i = n
 				n = i - 1
 				return entities[i], a[i]
 			end
 		elseif #pools == 2 then
-			local a, b = unpack(values)
+			local a, b = table.unpack(values)
 			return function()
 				local i = n
 				n = i - 1
 				return entities[i], a[i], b[i]
 			end
 		elseif #pools == 3 then
-			local a, b, c = unpack(values)
+			local a, b, c = table.unpack(values)
 			return function()
 				local i = n
 				n = i - 1
 				return entities[i], a[i], b[i], c[i]
 			end
 		elseif #pools == 4 then
-			local a, b, c, d = unpack(values)
+			local a, b, c, d = table.unpack(values)
 			return function()
 				local i = n
 				n = i - 1
@@ -639,7 +636,7 @@ do
 				for ii, v in next, values do
 					tuple[ii] = v[i]
 				end
-				return entities[i], unpack(tuple)
+				return entities[i], table.unpack(tuple)
 			end
 		end
 	end
@@ -1067,7 +1064,7 @@ local function registry_create()
 			for i, v in next, tuple do
 				tuple[i] = pool_get(pools[v], key, id)
 			end
-			return unpack(tuple)
+			return table.unpack(tuple)
 		end
 	end
 
