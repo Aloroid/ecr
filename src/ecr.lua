@@ -289,7 +289,7 @@ do
 		return self
 	end
 
-	function View.__iter(self)
+	function View.__call(self)
 		local function single(pool)
 			local n = pool.size
 			local entities = pool.entities
@@ -405,7 +405,7 @@ do
 		return smallest(get_pools(self.registry, self.includes)).size
 	end
 
-	View.each = View.__iter
+	View.each = View.__call
 	
 	Observer = {}
 	Observer.__index = Observer
@@ -488,7 +488,7 @@ do
 		return self
 	end
 
-	function Observer.__iter(self)
+	function Observer.__call(self)
 		local pool = self.pool
 		local reg = self.registry
 		local includes = get_pools(reg, self.includes)
@@ -572,7 +572,7 @@ do
 		return self.pool.size
 	end
 
-	Observer.each = Observer.__iter
+	Observer.each = Observer.__call
 	
 	Group = {}
 	Group.__index = Group
@@ -593,7 +593,7 @@ do
 		return self
 	end
 
-	function Group.__iter(self)
+	function Group.__call(self)
 		local pools = self.pools
 		local n = self.data.size
 		local entities = pools[1].entities
@@ -644,7 +644,7 @@ do
 		end
 	end
 
-	Group.each = Group.__iter
+	Group.each = Group.__call
 	
 	function Group.__len(self)
 		return self.data.size

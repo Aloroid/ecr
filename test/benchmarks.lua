@@ -956,3 +956,120 @@ do
 		observer:clear()
 	end)
 end
+
+
+do TITLE "Practical tests"
+    local world = ecr.registry()
+
+    local Position = ecr.component()
+    local Velocity = ecr.component()
+    local Health = ecr.component()
+
+    local Dead = ecr.component(function() return true end)
+
+    world:group(Position, Velocity)
+
+    local function init()
+        for i = 1, 2^12 do -- ~4k
+            local id = world:create()
+            world:set(id, Position, i)
+            world:set(id, Velocity, i)
+            world:set(id, Health, 0)
+        end
+    end
+
+    BENCH("Create ~4k entities with 3 components", function()
+       init()
+    end)
+
+    BENCH("Update position ~4k entities", function()
+        for id, pos, vel in world:group(Position, Velocity)() do
+            world:set(id, Position, pos + vel*1/60)
+        end
+    end)
+
+    BENCH("Raw update position ~4k entities", function()
+        local n = #world:group(Position, Velocity)
+        local positions  = world:storage(Position).values
+        local velocities = world:storage(Velocity).values
+        
+        for i = 1, n do
+            positions[i] = positions[i] + velocities[i] * 1/60
+        end
+            
+    end)
+
+    BENCH("Add tag ~4k entities", function()
+        for id, health in world:view(Health)() do
+            if health <= 0 then
+                world:add(id, Dead)
+            end
+        end
+    end)
+
+    BENCH("Destroy ~4k entities", function()
+        for id in world:view(Dead)() do
+            world:destroy(id)
+        end
+    end)
+end
+
+-- attempt to repeat the same test above but with regular OOP instead of ECS
+-- this is just curiosity to see how ECS really fares against OOP in Luau
+do TITLE "Practical test OOP"
+    local world = {}
+
+    local cache = {}
+
+    -- luaus table allocator is really good and allocates tables in linear
+    -- pages in memory, causing sequential access to tables to hit cache.
+    -- i dont think this would occur in complex real games unless you
+    -- specifically design for it so attempt to randomize here to try
+    -- eliminate cache hits (this reduces performance by around ~5x)
+    do
+        for i = 1, 2^15 do
+            cache[i] =  {
+                Position = 0,
+                Velocity = 0,
+                Health = 0,
+                -- dummy fields
+                A = 0,
+                B = 0,
+                C = 0,
+                D = 0
+            }
+        end
+
+        for i = 1, 2^12 do
+            world[i] = cache[math.random(1, #cache)]
+        end
+    end
+
+    BENCH("Create ~4k entities with 3 components", function()
+        for i = 1, 2^12 do
+            world[i].Position = i
+            world[i].Velocity = i
+            world[i].Health = 0
+        end
+    end)
+
+    BENCH("Update position ~4k entities", function()
+        for _, obj in ipairs(world) do
+            obj.Position = obj.Position + obj.Velocity * 1/60
+        end
+    end)
+
+    BENCH("Add tag ~4k entities", function()
+        for _, obj in ipairs(world) do
+            if obj.Health <= 0 then
+                obj.Dead = true
+            end
+        end
+    end)
+
+    BENCH("Destroy ~4k entities", function()
+		world = nil
+		cache = nil
+        collectgarbage("collect") -- this probably isnt a fair test
+    end)
+end
